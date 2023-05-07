@@ -25,7 +25,7 @@ function my_spotify_plugin_settings_page_callback() {
 			<?php settings_fields( 'my_spotify_plugin_settings' ); ?>
 			<?php do_settings_sections( 'my_spotify_plugin_settings' ); ?>
 			<table class="form-table">
-				<tr>
+				<tr>burokku
 					<th scope="row"><?php _e( 'Client ID', 'my_spotify_plugin' ); ?></th>
 					<td><input type="text" name="my_spotify_plugin_client_id" value="<?php echo esc_attr( $options['my_spotify_plugin_client_id'] ); ?>" /></td>
 				</tr>
@@ -218,8 +218,14 @@ function my_spotify_plugin_get_track_data( $track_id ) {
 
 
 // STEP05: stationカスタム投稿タイプのメタボックスに、Spotify Track IDの入力フォームを追加し、投稿時にデータを保存する
+// add_meta_box の呼び出し
 add_action( 'add_meta_boxes', 'my_spotify_plugin_add_station_meta_box' );
 function my_spotify_plugin_add_station_meta_box() {
+		// 'station' 投稿タイプ以外では処理を中断
+		if ( 'station' !== get_post_type( $post->ID ) ) {
+				return;
+		}
+		//add_meta_box( $id, $title, $callback, $screen = null, $context = 'advanced', $priority = 'default', $callback_args = null );
 		add_meta_box(
 				'my_spotify_plugin_station_meta_box',
 				__( 'Spotify Track ID', 'my_spotify_plugin' ),
@@ -229,6 +235,7 @@ function my_spotify_plugin_add_station_meta_box() {
 				'high'
 		);
 }
+
 
 function my_spotify_plugin_meta_box_callback( $post ) {
 		wp_nonce_field( basename( __FILE__ ), 'my_spotify_plugin_nonce' );
@@ -240,28 +247,32 @@ function my_spotify_plugin_meta_box_callback( $post ) {
 }
 
 function my_spotify_plugin_save_meta_box_data( $post_id ) {
-		if ( ! isset( $_POST['my_spotify_plugin_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_nonce'], basename( __FILE__ ) ) ) {
+		if ( ! isset( $_POST['my_spotify_plugin_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_meta_box_nonce'], 'my_spotify_plugin_save_meta_box_data' ) ) {
 				return;
 		}
+
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 				return;
 		}
-		if ( isset( $_POST['post_type'] ) && 'station' === $_POST['post_type'] ) {
-				if ( ! current_user_can( 'edit_page', $post_id ) ) {
-						return;
-				}
-		} else {
-				if ( ! current_user_can( 'edit_post', $post_id ) ) {
-						return;
-				}
-		}
-		if ( ! isset( $_POST['my_spotify_plugin_spotify_track_id'] ) ) {
+
+		if ( 'station' !== get_post_type( $post_id ) ) {
 				return;
 		}
-		$spotify_track_id = sanitize_text_field( $_POST['my_spotify_plugin_spotify_track_id'] );
-		update_post_meta( $post_id, 'spotify_track_id', $spotify_track_id );
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return;
+		}
+
+		if ( ! isset( $_POST['my_spotify_plugin_track_id_field'] ) ) {
+				return;
+		}
+
+		$my_data = sanitize_text_field( $_POST['my_spotify_plugin_track_id_field'] );
+
+		update_post_meta( $post_id, 'spotify_track_id', $my_data );
 }
-add_action( 'save_post', 'my_spotify_plugin_save_meta_box_data' );
+add_action( 'save_post_station', 'my_spotify_plugin_save_meta_box_data' );
+
 
 
 // STEP05: 認証コードを使ってアクセストークンとリフレッシュトークンを取得する
@@ -357,11 +368,15 @@ function my_spotify_plugin_add_program_meta_box() {
 
 // メタボックスのコールバック関数
 function my_spotify_plugin_station_meta_box_callback( $post ) {
-		wp_nonce_field( 'my_spotify_plugin_save_meta_box_data', 'my_spotify_plugin_meta_box_nonce' );
-		$value = get_post_meta( $post->ID, 'spotify_track_id', true );
-		echo '<label for="my_spotify_plugin_track_id_field">' . __( 'Track ID', 'my_spotify_plugin' ) . '</label>';
-		echo '<input type="text" id="my_spotify_plugin_track_id_field" name="my_spotify_plugin_track_id_field" value="' . esc_attr( $value ) . '">';
+	// ワンスインスタンスのノンスを作成する
+	wp_nonce_field( 'my_spotify_plugin_save_meta_box_data', 'my_spotify_plugin_meta_box_nonce' );
+	$value = get_post_meta( $post->ID, 'spotify_track_id', true );
+	?>
+	<label for="my_spotify_plugin_track_id_field"><?php _e( 'Track ID', 'my_spotify_plugin' ); ?></label>
+	<input type="text" id="my_spotify_plugin_track_id_field" name="my_spotify_plugin_track_id_field" value="<?php echo esc_attr( $value ); ?>">
+	<?php
 }
+
 
 // メタボックスの値を保存する関数
 add_action( 'save_post_station', 'my_spotify_plugin_save_station_meta_box_data' );
