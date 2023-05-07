@@ -146,6 +146,25 @@ function my_spotify_plugin_handle_form_submission() {
 }
 add_action( 'init', 'my_spotify_plugin_handle_form_submission' );
 
+// Custom template for displaying Spotify Track ID
+add_filter( 'single_template', 'my_spotify_plugin_custom_single_template' );
+function my_spotify_plugin_custom_single_template( $single_template ) {
+    global $post;
+    if ( isset($post) && 'station' === $post->post_type ) {
+        $theme_template = locate_template( array( 'my-spotify-plugin/single-station.php' ) );
+        if ( ! empty( $theme_template ) ) {
+            $single_template = $theme_template;
+        } elseif ( file_exists( plugin_dir_path( __FILE__ ) . 'templates/single-station.php' ) ) {
+            $single_template = plugin_dir_path( __FILE__ ) . 'templates/single-station.php';
+        }
+    }
+    return $single_template;
+}
+
+
+
+
+
 
 //STEP04: 曲情報を取得するための関数を実装
 
@@ -221,6 +240,7 @@ function my_spotify_plugin_get_track_data( $track_id ) {
 // add_meta_box の呼び出し
 add_action( 'add_meta_boxes', 'my_spotify_plugin_add_station_meta_box' );
 function my_spotify_plugin_add_station_meta_box() {
+		global $post; // $post変数をグローバル化する
 		// 'station' 投稿タイプ以外では処理を中断
 		if ( 'station' !== get_post_type( $post->ID ) ) {
 				return;
@@ -235,6 +255,7 @@ function my_spotify_plugin_add_station_meta_box() {
 				'high'
 		);
 }
+
 
 
 function my_spotify_plugin_meta_box_callback( $post ) {
@@ -472,21 +493,23 @@ function my_spotify_plugin_get_track_info( $track_id ) {
 // STEP09: カスタムフィールドを追加する
 add_action( 'add_meta_boxes', 'my_spotify_plugin_add_meta_box' );
 function my_spotify_plugin_add_meta_box() {
-		add_meta_box(
-				'my_spotify_plugin_meta_box',
-				__( 'Spotify Track ID', 'my_spotify_plugin' ),
-				'my_spotify_plugin_meta_box_callback',
-				'post',
-				'side'
-		);
+add_meta_box(
+'my_spotify_plugin_meta_box',
+__( 'Spotify Track ID', 'my_spotify_plugin' ),
+'my_spotify_plugin_meta_box_callback',
+'post',
+'side'
+);
 }
 
-// STEP09:02
-function my_spotify_plugin_add_station_meta_box_callback( $post ) {
-		wp_nonce_field( 'my_spotify_plugin_save_meta_box', 'my_spotify_plugin_meta_box_nonce' );
-		$value = get_post_meta( $post->ID, 'spotify_track_id', true );
-		echo '<label for="spotify_track_id">';
-		_e( 'Spotify Track ID', 'my_spotify_plugin' );
-		echo '</label>';
-		echo '<input type="text" id="spotify_track_id" name="spotify_track_id" value="' . esc_attr( $value ) . '" />';
+
+
+
+
+// STEP11: テンプレートファイルをカスタマイズ
+// Get Spotify Track ID for the current post
+function my_spotify_plugin_get_track_id( $post_id ) {
+    $spotify_track_id = get_post_meta( $post_id, '_spotify_track_id', true );
+    return $spotify_track_id;
 }
+
