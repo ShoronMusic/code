@@ -561,3 +561,52 @@ function my_spotify_plugin_display_track_info( $content ) {
 
   return $content;
 }
+
+
+/**
+ * Spotify APIにアクセスするためのトークンを取得する関数
+ */
+function my_spotify_plugin_get_access_token() {
+  // 設定ページで入力された情報を取得する
+  $client_id = get_option( 'my_spotify_plugin_client_id' );
+  $client_secret = get_option( 'my_spotify_plugin_client_secret' );
+  $refresh_token = get_option( 'my_spotify_plugin_refresh_token' );
+
+  // Spotify APIにアクセスするためのURLを作成する
+  $api_url = 'https://accounts.spotify.com/api/token';
+
+  // POSTデータを設定する
+  $post_data = array(
+    'grant_type' => 'refresh_token',
+    'refresh_token' => $refresh_token,
+  );
+
+  // リクエストヘッダーを設定する
+  $headers = array(
+    'Authorization: Basic ' . base64_encode( $client_id . ':' . $client_secret ),
+    'Content-Type: application/x-www-form-urlencoded',
+  );
+
+  // リクエストを送信する
+  $response = wp_remote_post(
+    $api_url,
+    array(
+      'headers' => $headers,
+      'body' => $post_data,
+      'timeout' => 30,
+    )
+  );
+
+  // レスポンスのボディを取得する
+  $body = wp_remote_retrieve_body( $response );
+
+  // レスポンスのボディが空でなければJSONをデコードする
+  if ( ! empty( $body ) ) {
+    $access_token_info = json_decode( $body );
+
+    // アクセストークンを返す
+    return $access_token_info->access_token;
+  }
+
+  return '';
+}
