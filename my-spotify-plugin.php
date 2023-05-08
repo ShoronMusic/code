@@ -12,9 +12,9 @@ Text Domain: my-spotify-plugin
 
 // ここからプラグインの実装
 
+require_once( plugin_dir_path( __FILE__ ) . 'includes/spotify-api.php' );
+
 // STEP02: 管理画面にSpotify APIの認証を行うための入力フォーム
-
-
 // Render the settings page
 function my_spotify_plugin_settings_page_callback() {
 	$options = get_option( 'my_spotify_plugin_settings' );
@@ -149,16 +149,16 @@ add_action( 'init', 'my_spotify_plugin_handle_form_submission' );
 // Custom template for displaying Spotify Track ID
 add_filter( 'single_template', 'my_spotify_plugin_custom_single_template' );
 function my_spotify_plugin_custom_single_template( $single_template ) {
-    global $post;
-    if ( isset($post) && 'station' === $post->post_type ) {
-        $theme_template = locate_template( array( 'my-spotify-plugin/single-station.php' ) );
-        if ( ! empty( $theme_template ) ) {
-            $single_template = $theme_template;
-        } elseif ( file_exists( plugin_dir_path( __FILE__ ) . 'templates/single-station.php' ) ) {
-            $single_template = plugin_dir_path( __FILE__ ) . 'templates/single-station.php';
-        }
-    }
-    return $single_template;
+		global $post;
+		if ( isset($post) && 'station' === $post->post_type ) {
+				$theme_template = locate_template( array( 'my-spotify-plugin/single-station.php' ) );
+				if ( ! empty( $theme_template ) ) {
+						$single_template = $theme_template;
+				} elseif ( file_exists( plugin_dir_path( __FILE__ ) . 'templates/single-station.php' ) ) {
+						$single_template = plugin_dir_path( __FILE__ ) . 'templates/single-station.php';
+				}
+		}
+		return $single_template;
 }
 
 
@@ -503,13 +503,61 @@ __( 'Spotify Track ID', 'my_spotify_plugin' ),
 }
 
 
-
-
-
 // STEP11: テンプレートファイルをカスタマイズ
 // Get Spotify Track ID for the current post
 function my_spotify_plugin_get_track_id( $post_id ) {
-    $spotify_track_id = get_post_meta( $post_id, '_spotify_track_id', true );
-    return $spotify_track_id;
+		$spotify_track_id = get_post_meta( $post_id, '_spotify_track_id', true );
+		return $spotify_track_id;
 }
 
+
+//STEP12:the_contentフィルターにフックする
+// カスタムフィールドからSpotifyトラックIDを取得して曲情報を表示するフィルターを設定する
+add_filter( 'the_content', 'my_spotify_plugin_display_track_info' );
+
+function my_spotify_plugin_display_track_info( $content ) {
+  // カスタムフィールドからSpotifyトラックIDを取得する
+  $spotify_track_id = get_post_meta( get_the_ID(), 'spotify_track_id', true );
+
+  // SpotifyトラックIDが存在しない場合はコンテンツをそのまま返す
+  if ( ! $spotify_track_id ) {
+    return $content;
+  }
+
+  // Spotify APIにアクセスするためのURLを作成する
+  $api_url = 'https://api.spotify.com/v1/tracks/' . $spotify_track_id;
+
+  // APIにアクセスするためのトークンを取得する
+  $access_token = my_spotify_plugin_get_access_token();
+
+  // リクエストヘッダーを設定する
+  $headers = array(
+    'Authorization: Bearer ' . $access_token,
+    'Content-Type: application/json',
+  );
+
+  // リクエストを送信する
+  $response = wp_remote_get(
+    $api_url,
+    array(
+      'headers' => $headers,
+      'timeout' => 30,
+    )
+  );
+
+  // レスポンスのボディを取得する
+  $body = wp_remote_retrieve_body( $response );
+
+  // レスポンスのボディが空でなければJSONをデコードする
+  if ( ! empty( $body ) ) {
+    $track_info = json_decode( $body );
+
+    // 取得した曲情報を出力する
+    $content .= '<div><strong>Artist:</strong> ' . esc_html( $track_info->artists[0]->name ) . '</div>';
+    $content .= '<div><strong>Title:</strong> ' . esc_html( $track_info->name ) . '</div>';
+    $content .= '<div><strong>Album:</strong> ' . esc_html( $track_info->album->name ) . '</div>';
+    $content .= '<div><strong>Release date:</strong> ' . esc_html( $track_info->album->release_date ) . '</div>';
+  }
+
+  return $content;
+}
