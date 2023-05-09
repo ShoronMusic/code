@@ -389,3 +389,56 @@ function my_spotify_plugin_display_spotify_track_id() {
 		}
 	}
 }
+
+
+// station投稿の保存時にフックする処理 20230508
+function my_spotify_plugin_save_track_info( $post_id, $post ) {
+	// カスタム投稿タイプ「station」以外は処理を終了する
+	if ( $post->post_type !== 'station' ) {
+		return;
+	}
+
+	// 「Spotify Track ID」を取得する
+	$spotify_track_id = get_post_meta( $post_id, 'spotify_track_id', true );
+
+	// 「Spotify Track ID」が存在しなければ処理を終了する
+	if ( ! $spotify_track_id ) {
+		return;
+	}
+
+	// Spotify APIにアクセスするためのURLを作成する
+	$api_url = 'https://api.spotify.com/v1/tracks/' . $spotify_track_id;
+
+	// Spotify APIにアクセスするためのトークンを取得する
+	$access_token = my_spotify_plugin_get_access_token();
+
+	// リクエストヘッダーを設定する
+	$headers = array(
+		'Authorization: Bearer ' . $access_token,
+		'Content-Type: application/json',
+	);
+
+	// リクエストを送信する
+	$response = wp_remote_get(
+		$api_url,
+		array(
+			'headers' => $headers,
+			'timeout' => 30,
+		)
+	);
+
+	// レスポンスのボディを取得する
+	$body = wp_remote_retrieve_body( $response );
+
+	// レスポンスのボディが空でなければJSONをデコードする
+	if ( ! empty( $body ) ) {
+		$track_info = json_decode( $body );
+
+		// カスタムフィールド「artist_name」「track_title」「album_title」「release_date」に曲情報を保存する
+		update_post_meta( $post_id, 'artist_name', esc_html( $track_info->artists[0]->name ) );
+		update_post_meta( $post_id, 'track_title', esc_html( $track_info->name ) );
+		update_post_meta( $post_id, 'album_title', esc_html( $track_info->album->name ) );
+		update_post_meta( $post_id, 'release_date', esc_html( $track_info->album->release_date ) );
+	}
+}
+add_action( 'save_post', 'my_spotify_plugin_save_track_info' );
