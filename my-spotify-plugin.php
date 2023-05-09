@@ -511,102 +511,143 @@ function my_spotify_plugin_get_track_id( $post_id ) {
 }
 
 
-//STEP12:the_contentフィルターにフックする
-// カスタムフィールドからSpotifyトラックIDを取得して曲情報を表示するフィルターを設定する
-add_filter( 'the_content', 'my_spotify_plugin_display_track_info' );
-
+// STEP12: the_contentフィルターにフックする
 function my_spotify_plugin_display_track_info( $content ) {
-  // カスタムフィールドからSpotifyトラックIDを取得する
-  $spotify_track_id = get_post_meta( get_the_ID(), 'spotify_track_id', true );
+	// カスタムフィールドからSpotifyトラックIDを取得する
+	$spotify_track_id = get_post_meta( get_the_ID(), 'spotify_track_id', true );
 
-  // SpotifyトラックIDが存在しない場合はコンテンツをそのまま返す
-  if ( ! $spotify_track_id ) {
-    return $content;
-  }
+	// SpotifyトラックIDが存在しない場合はコンテンツをそのまま返す
+	if ( ! $spotify_track_id ) {
+		return $content;
+	}
 
-  // Spotify APIにアクセスするためのURLを作成する
-  $api_url = 'https://api.spotify.com/v1/tracks/' . $spotify_track_id;
+	// Spotify APIにアクセスするためのURLを作成する
+	$api_url = 'https://api.spotify.com/v1/tracks/' . $spotify_track_id;
 
-  // APIにアクセスするためのトークンを取得する
-  $access_token = my_spotify_plugin_get_access_token();
+	// APIにアクセスするためのトークンを取得する
+	$access_token = my_spotify_plugin_get_access_token();
 
-  // リクエストヘッダーを設定する
-  $headers = array(
-    'Authorization: Bearer ' . $access_token,
-    'Content-Type: application/json',
-  );
+	// リクエストヘッダーを設定する
+	$headers = array(
+		'Authorization: Bearer ' . $access_token,
+		'Content-Type: application/json',
+	);
 
-  // リクエストを送信する
-  $response = wp_remote_get(
-    $api_url,
-    array(
-      'headers' => $headers,
-      'timeout' => 30,
-    )
-  );
+	// リクエストを送信する
+	$response = wp_remote_get(
+		$api_url,
+		array(
+			'headers' => $headers,
+			'timeout' => 30,
+		)
+	);
 
-  // レスポンスのボディを取得する
-  $body = wp_remote_retrieve_body( $response );
+	// レスポンスのボディを取得する
+	$body = wp_remote_retrieve_body( $response );
 
-  // レスポンスのボディが空でなければJSONをデコードする
-  if ( ! empty( $body ) ) {
-    $track_info = json_decode( $body );
+	// レスポンスのボディが空でなければJSONをデコードする
+	if ( ! empty( $body ) ) {
+		$track_info = json_decode( $body );
 
-    // 取得した曲情報を出力する
-    $content .= '<div><strong>Artist:</strong> ' . esc_html( $track_info->artists[0]->name ) . '</div>';
-    $content .= '<div><strong>Title:</strong> ' . esc_html( $track_info->name ) . '</div>';
-    $content .= '<div><strong>Album:</strong> ' . esc_html( $track_info->album->name ) . '</div>';
-    $content .= '<div><strong>Release date:</strong> ' . esc_html( $track_info->album->release_date ) . '</div>';
-  }
+		// Spotify APIから取得したトラック情報がnullでない場合は表示する
+		if ( $track_info !== null ) {
+			// アーティスト名が定義されている場合に表示する
+			if ( isset( $track_info->artists ) && ! empty( $track_info->artists ) && isset( $track_info->artists[0]->name ) ) {
+				$content .= '<div><strong>Artist:</strong> ' . esc_html( $track_info->artists[0]->name ) . '</div>';
+			}
 
-  return $content;
+			// 曲名が定義されている場合に表示する
+			if ( isset( $track_info->name ) ) {
+				$content .= '<div><strong>Title:</strong> ' . esc_html( $track_info->name ) . '</div>';
+			}
+
+			// アルバム名が定義されている場合に表示する
+			if ( isset( $track_info->album ) && isset( $track_info->album->name ) ) {
+				$content .= '<div><strong>Album:</strong> ' . esc_html( $track_info->album->name ) . '</div>';
+			}
+
+			// リリース日が定義されている場合に表示する
+			if ( isset( $track_info->album ) && isset( $track_info->album->release_date ) ) {
+				$content .= '<div><strong>Release date:</strong> ' . esc_html( $track_info->album->release_date ) . '</div>';
+			}
+		}
+	}
+
+	return $content;
 }
 
 
+// STEP13
 /**
  * Spotify APIにアクセスするためのトークンを取得する関数
  */
 function my_spotify_plugin_get_access_token() {
-  // 設定ページで入力された情報を取得する
-  $client_id = get_option( 'my_spotify_plugin_client_id' );
-  $client_secret = get_option( 'my_spotify_plugin_client_secret' );
-  $refresh_token = get_option( 'my_spotify_plugin_refresh_token' );
+	// 設定ページで入力された情報を取得する
+	$client_id = get_option( 'my_spotify_plugin_client_id' );
+	$client_secret = get_option( 'my_spotify_plugin_client_secret' );
+	$refresh_token = get_option( 'my_spotify_plugin_refresh_token' );
 
-  // Spotify APIにアクセスするためのURLを作成する
-  $api_url = 'https://accounts.spotify.com/api/token';
+	// Spotify APIにアクセスするためのURLを作成する
+	$api_url = 'https://accounts.spotify.com/api/token';
 
-  // POSTデータを設定する
-  $post_data = array(
-    'grant_type' => 'refresh_token',
-    'refresh_token' => $refresh_token,
-  );
+	// POSTデータを設定する
+	$post_data = array(
+		'grant_type' => 'refresh_token',
+		'refresh_token' => $refresh_token,
+	);
 
-  // リクエストヘッダーを設定する
-  $headers = array(
-    'Authorization: Basic ' . base64_encode( $client_id . ':' . $client_secret ),
-    'Content-Type: application/x-www-form-urlencoded',
-  );
+	// リクエストヘッダーを設定する
+	$headers = array(
+		'Authorization: Basic ' . base64_encode( $client_id . ':' . $client_secret ),
+		'Content-Type: application/x-www-form-urlencoded',
+	);
 
-  // リクエストを送信する
-  $response = wp_remote_post(
-    $api_url,
-    array(
-      'headers' => $headers,
-      'body' => $post_data,
-      'timeout' => 30,
-    )
-  );
+	// リクエストを送信する
+	$response = wp_remote_post(
+		$api_url,
+		array(
+			'headers' => $headers,
+			'body' => $post_data,
+			'timeout' => 30,
+		)
+	);
 
-  // レスポンスのボディを取得する
-  $body = wp_remote_retrieve_body( $response );
+	// レスポンスのボディを取得する
+	$body = wp_remote_retrieve_body( $response );
 
-  // レスポンスのボディが空でなければJSONをデコードする
-  if ( ! empty( $body ) ) {
-    $access_token_info = json_decode( $body );
+	// レスポンスのボディが空でなければJSONをデコードする
+	if ( ! empty( $body ) ) {
+		$access_token_info = json_decode( $body );
 
-    // アクセストークンを返す
-    return $access_token_info->access_token;
-  }
+		// アクセストークンを返す
+		if ( isset( $access_token_info->access_token ) ) {
+			return $access_token_info->access_token;
+		}
+	}
 
-  return '';
+	return '';
 }
+
+// STEP14
+// シングルページでSpotifyトラックIDを取得して曲情報を表示する
+function my_spotify_plugin_display_track_info() {
+	// シングルページでなければ処理を終了する
+	if ( ! is_single() ) {
+		return;
+	}
+
+	// 投稿のIDを取得する
+	$post_id = get_the_ID();
+
+	// 「Spotify Track ID」を取得する
+	$spotify_track_id = get_post_meta( $post_id, 'spotify_track_id', true );
+
+	// 「Spotify Track ID」が存在しなければ処理を終了する
+	if ( ! $spotify_track_id ) {
+		return;
+	}
+
+	// 取得した曲情報を出力する
+	echo '<div><strong>Spotify Track ID:</strong> ' . esc_html( $spotify_track_id ) . '</div>';
+}
+
