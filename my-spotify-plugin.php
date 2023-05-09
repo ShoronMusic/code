@@ -630,7 +630,7 @@ function my_spotify_plugin_get_access_token() {
 
 // STEP14
 // シングルページでSpotifyトラックIDを取得して曲情報を表示する
-function my_spotify_plugin_display_track_info() {
+function my_spotify_plugin_display_track_info_v2() {
 	// シングルページでなければ処理を終了する
 	if ( ! is_single() ) {
 		return;
@@ -650,4 +650,4 @@ function my_spotify_plugin_display_track_info() {
 	// 取得した曲情報を出力する
 	echo '<div><strong>Spotify Track ID:</strong> ' . esc_html( $spotify_track_id ) . '</div>';
 }
-
+;
