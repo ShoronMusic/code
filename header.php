@@ -87,61 +87,7 @@ defined( 'ABSPATH' ) || exit;
 <hr>
 <hr>
 
-<?php
-// シングルページでSpotifyトラックIDを取得し、APIにアクセスするためのURLを作成する
-function my_spotify_plugin_get_track_info() {
-  // シングルページでなければ処理を終了する
-  if ( ! is_single() ) {
-    return;
-  }
 
-  // 投稿のIDを取得する
-  $post_id = get_the_ID();
-
-  // 「Spotify Track ID」を取得する
-  $spotify_track_id = get_post_meta( $post_id, 'spotify_track_id', true );
-
-  // 「Spotify Track ID」が存在しなければ処理を終了する
-  if ( ! $spotify_track_id ) {
-    return;
-  }
-
-  // Spotify APIにアクセスするためのURLを作成する
-  $api_url = 'https://api.spotify.com/v1/tracks/' . $spotify_track_id;
-
-  // APIにアクセスするためのトークンを取得する
-  $access_token = my_spotify_plugin_get_access_token();
-
-  // リクエストヘッダーを設定する
-  $headers = array(
-    'Authorization: Bearer ' . $access_token,
-    'Content-Type: application/json',
-  );
-
-  // リクエストを送信する
-  $response = wp_remote_get(
-    $api_url,
-    array(
-      'headers' => $headers,
-      'timeout' => 30,
-    )
-  );
-
-  // レスポンスのボディを取得する
-  $body = wp_remote_retrieve_body( $response );
-
-  // レスポンスのボディが空でなければJSONをデコードする
-  if ( ! empty( $body ) ) {
-    $track_info = json_decode( $body );
-
-    // 取得した曲情報を出力する
-    echo '<div><strong>Artist:</strong> ' . esc_html( $track_info->artists[0]->name ) . '</div>';
-    echo '<div><strong>Title:</strong> ' . esc_html( $track_info->name ) . '</div>';
-    echo '<div><strong>Album:</strong> ' . esc_html( $track_info->album->name ) . '</div>';
-    echo '<div><strong>Release date:</strong> ' . esc_html( $track_info->album->release_date ) . '</div>';
-  }
-}
-?>
 
 <hr>
 <hr>
@@ -185,7 +131,7 @@ em {font-style: normal; color:#006e97; margin: 0 1em 0 0}
 	</div><!-- .entry-content -->
 
 	<footer class="entry-footer">
-		<?php your_theme_entry_footer(); ?>
+
 	</footer><!-- .entry-footer -->
-</article><!-- #post-<?php the_ID(); ?> -->
+</article>
 </div>
