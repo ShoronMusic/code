@@ -11,6 +11,57 @@ Author URI: https://example.com/
 // SpotifyAPI情報を扱うクラスを定義したファイルを読み込む
 require_once( plugin_dir_path( __FILE__ ) . 'includes/spotify-api.php' );
 
+
+function my_spotify_plugin_add_custom_meta_box() {
+    add_meta_box(
+        'my_spotify_plugin_meta_box',
+        'Spotify Track ID',
+        'my_spotify_plugin_meta_box_callback',
+        'station',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'my_spotify_plugin_add_custom_meta_box' );
+
+
+
+function my_spotify_plugin_meta_box_callback( $post ) {
+    wp_nonce_field( basename( __FILE__ ), 'my_spotify_plugin_nonce' );
+    $spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
+    ?>
+    <p>
+        <label for="my_spotify_plugin_field">Spotify Track ID:</label>
+        <input type="text" id="my_spotify_plugin_field" name="my_spotify_plugin_field" value="<?php echo esc_attr( $spotify_track_id ); ?>" style="width:100%;" />
+    </p>
+    <?php
+}
+
+function my_spotify_plugin_save_custom_meta_box( $post_id ) {
+    if ( ! isset( $_POST['my_spotify_plugin_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_nonce'], basename( __FILE__ ) ) ) {
+        return $post_id;
+    }
+
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return $post_id;
+    }
+
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return $post_id;
+    }
+
+    if ( ! isset( $_POST['my_spotify_plugin_field'] ) ) {
+        return $post_id;
+    }
+
+    $spotify_track_id = sanitize_text_field( $_POST['my_spotify_plugin_field'] );
+    update_post_meta( $post_id, 'spotify_track_id', $spotify_track_id );
+}
+add_action( 'save_post', 'my_spotify_plugin_save_custom_meta_box' );
+
+
+
+
 // 「SPOTIFY」ボタンを追加する
 function my_spotify_plugin_add_button() {
 		// カスタム投稿タイプ「station」にのみボタンを表示する
@@ -408,3 +459,32 @@ function my_spotify_plugin_add_meta_box() {
 add_action( 'add_meta_boxes_station', 'my_spotify_plugin_add_meta_box' );
 
 
+// code11
+function my_spotify_plugin_add_custom_fields() {
+    global $post;
+    echo '<input type="hidden" name="my_spotify_plugin_custom_field_nonce" value="' . wp_create_nonce() . '">';
+    echo '<label for="my_spotify_plugin_custom_field">' . __("Spotify Track ID", 'my_spotify_plugin') . '</label><br>';
+    echo '<input type="text" id="my_spotify_plugin_custom_field" name="my_spotify_plugin_custom_field" value="' . get_post_meta($post->ID, 'my_spotify_plugin_custom_field', true) . '">';
+}
+
+function my_spotify_plugin_save_custom_field( $post_id ) {
+    if ( ! isset( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
+        return;
+    }
+    if ( ! wp_verify_nonce( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    if ( ! isset( $_POST['my_spotify_plugin_custom_field'] ) ) {
+        return;
+    }
+    $my_data = sanitize_text_field( $_POST['my_spotify_plugin_custom_field'] );
+    update_post_meta( $post_id, 'my_spotify_plugin_custom_field', $my_data );
+}
+add_action( 'add_meta_boxes', 'my_spotify_plugin_add_meta_box' );
+add_action( 'save_post', 'my_spotify_plugin_save_custom_field' );
