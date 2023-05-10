@@ -87,6 +87,12 @@ defined( 'ABSPATH' ) || exit;
 <hr>
 <hr>
 
+<?php $spotify_id = get_post_meta( get_the_ID(), 'spotify_id', true ); ?>
+<?php if ( ! empty( $spotify_id ) ) : ?>
+  <div class="spotify-embed">
+    <iframe src="https://open.spotify.com/embed/track/<?php echo esc_attr( $spotify_id ); ?>" width="300" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>
+  </div>
+<?php endif; ?>
 
 
 <hr>
