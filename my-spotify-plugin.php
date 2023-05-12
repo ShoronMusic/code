@@ -13,31 +13,35 @@ require_once( plugin_dir_path( __FILE__ ) . 'includes/spotify-api.php' );
 
 
 function my_spotify_plugin_add_custom_meta_box() {
-    add_meta_box(
-        'my_spotify_plugin_meta_box',
-        'Spotify Track ID',
-        'my_spotify_plugin_meta_box_callback',
-        'station',
-        'normal',
-        'high'
-    );
+		add_meta_box(
+				'my_spotify_plugin_meta_box',
+				'Spotify Track ID',
+				'my_spotify_plugin_meta_box_callback',
+				'station',
+				'normal',
+				'high'
+		);
 }
 add_action( 'add_meta_boxes', 'my_spotify_plugin_add_custom_meta_box' );
 
 
 
 function my_spotify_plugin_meta_box_callback( $post ) {
-    wp_nonce_field( basename( __FILE__ ), 'my_spotify_plugin_nonce' );
-    $spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
-    ?>
-    <p>
-        <label for="my_spotify_plugin_field">Spotify Track ID:</label>
-        <input type="text" id="my_spotify_plugin_field" name="my_spotify_plugin_field" value="<?php echo esc_attr( $spotify_track_id ); ?>" style="width:100%;" />
-    </p>
-    <?php
+		wp_nonce_field( basename( __FILE__ ), 'my_spotify_plugin_nonce' );
+		$spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
+		?>
+		<p>
+				<label for="my_spotify_plugin_field">Spotify Track ID:</label>
+				<input type="text" id="my_spotify_plugin_field" name="my_spotify_plugin_field" value="<?php echo esc_attr( $spotify_track_id ); ?>" style="width:100%;" />
+		</p>
+		<?php
 }
 
+
+
 function my_spotify_plugin_save_custom_meta_box( $post_id ) {
+    $post = get_post( $post_id ); // 投稿を取得
+
     if ( ! isset( $_POST['my_spotify_plugin_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_nonce'], basename( __FILE__ ) ) ) {
         return $post_id;
     }
@@ -258,42 +262,48 @@ add_action( 'wp_ajax_my_spotify_plugin_button_click', 'my_spotify_plugin_button_
 
 
 // カスタム投稿タイプ「station」の場合のみ、カスタムフィールドを表示する
-if ( $post->post_type === 'station' ) {
-		// カスタムフィールドに保存された値を取得する
-		$spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
-		$artist_name = get_post_meta( $post->ID, 'artist_name', true );
-		$track_title = get_post_meta( $post->ID, 'track_title', true );
-		$album_title = get_post_meta( $post->ID, 'album_title', true );
-		$release_date = get_post_meta( $post->ID, 'release_date', true );
+function my_spotify_plugin_add_custom_field() {
+    global $post;
 
-		// カスタムフィールドのHTMLを出力する
-		?>
-		<div class="misc-pub-section misc-pub-spotify">
-				<span class="spotify-label">Spotify Track ID:</span>
-				<span class="spotify-value"><?php echo esc_html( $spotify_track_id ); ?></span>
-				<br>
-				<span class="spotify-label">Artist:</span>
-				<span class="spotify-value"><?php echo esc_html( $artist_name ); ?></span>
-				<br>
-				<span class="spotify-label">Track Title:</span>
-				<span class="spotify-value"><?php echo esc_html( $track_title ); ?></span>
-				<br>
-				<span class="spotify-label">Album Title:</span>
-				<span class="spotify-value"><?php echo esc_html( $album_title ); ?></span>
-				<br>
-				<span class="spotify-label">Release Date:</span>
-				<span class="spotify-value"><?php echo esc_html( $release_date ); ?></span>
-		</div>
-		<?php
+    if ( $post->post_type === 'station' ) {
+        // カスタムフィールドに保存された値を取得する
+        $spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
+        $artist_name = get_post_meta( $post->ID, 'artist_name', true );
+        $track_title = get_post_meta( $post->ID, 'track_title', true );
+        $album_title = get_post_meta( $post->ID, 'album_title', true );
+        $release_date = get_post_meta( $post->ID, 'release_date', true );
+
+        // カスタムフィールドのHTMLを出力する
+        ?>
+        <div class="misc-pub-section misc-pub-spotify">
+            <span class="spotify-label">Spotify Track ID:</span>
+            <span class="spotify-value"><?php echo esc_html( $spotify_track_id ); ?></span>
+            <br>
+            <span class="spotify-label">Artist:</span>
+            <span class="spotify-value"><?php echo esc_html( $artist_name ); ?></span>
+            <br>
+            <span class="spotify-label">Track Title:</span>
+            <span class="spotify-value"><?php echo esc_html( $track_title ); ?></span>
+            <br>
+            <span class="spotify-label">Album Title:</span>
+            <span class="spotify-value"><?php echo esc_html( $album_title ); ?></span>
+            <br>
+            <span class="spotify-label">Release Date:</span>
+            <span class="spotify-value"><?php echo esc_html( $release_date ); ?></span>
+        </div>
+        <?php
+    }
 }
-add_action( 'post_submitbox_misc_actions', 'my_spotify_plugin_add_custom_field' );
+add_action( 'edit_form_after_title', 'my_spotify_plugin_add_custom_field' );
+
+
 
 
 // code05
 // プラグイン用のCSS,JavaScriptを読み込む
 function my_spotify_plugin_enqueue_scripts( $hook_suffix ) {
     global $post_type;
-    if ( ( $post_type == 'station' ) && ( in_array( $hook_suffix, array( 'post.php', 'post-new.php' ) ) ) ) {
+    if ( $post_type === 'station' && in_array( $hook_suffix, array( 'post.php', 'post-new.php' ) ) ) {
         wp_enqueue_style( 'my-spotify-plugin-style', plugin_dir_url( __FILE__ ) . 'my-spotify-plugin.css' );
         wp_enqueue_script(
             'my-spotify-plugin',
@@ -307,6 +317,55 @@ function my_spotify_plugin_enqueue_scripts( $hook_suffix ) {
 }
 add_action( 'admin_enqueue_scripts', 'my_spotify_plugin_enqueue_scripts' );
 
+// カスタム投稿タイプ「station」にカスタムフィールドを追加する
+function my_spotify_plugin_add_station_meta_box() {
+    add_meta_box(
+        'my_spotify_plugin_meta_box',
+        'Spotify Track ID',
+        'my_spotify_plugin_meta_box_callback',
+        'station',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'my_spotify_plugin_add_station_meta_box' );
+
+// カスタムフィールドの入力欄を表示する
+function my_spotify_plugin_station_meta_box_callback( $post ) {
+    // カスタムフィールドに保存された値を取得する
+    $spotify_track_id = get_post_meta( $post->ID, 'spotify_track_id', true );
+    ?>
+    <div>
+        <label for="my_spotify_plugin_field">Spotify Track ID:</label>
+        <input type="text" id="my_spotify_plugin_field" name="my_spotify_plugin_field" value="<?php echo esc_attr( $spotify_track_id ); ?>" style="width:100%;" />
+        <?php wp_nonce_field( basename( __FILE__ ), 'my_spotify_plugin_nonce' ); ?>
+    </div>
+    <?php
+}
+
+
+
+// カスタムフィールドの値を保存する
+function my_spotify_plugin_save_track_info( $post_id ) {
+	if ( ! isset( $_POST['my_spotify_plugin_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_nonce'], basename( __FILE__ ) ) ) {
+		return $post_id;
+	}
+
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return $post_id;
+	}
+
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return $post_id;
+	}
+
+	if ( isset( $_POST['my_spotify_plugin_field'] ) ) {
+		$spotify_track_id = sanitize_text_field( $_POST['my_spotify_plugin_field'] );
+		update_post_meta( $post_id, 'spotify_track_id', $spotify_track_id );
+	}
+}
+add_action( 'save_post', 'my_spotify_plugin_save_track_info' );
+
 
 // 06
 /**
@@ -315,13 +374,6 @@ add_action( 'admin_enqueue_scripts', 'my_spotify_plugin_enqueue_scripts' );
  * @param int $post_id 投稿ID
  */
 function my_spotify_plugin_update_custom_field( $post_id ) {
-	// nonceチェック
-	if ( ! isset( $_POST['my_spotify_plugin_custom_field_nonce'] ) ||
-			 ! wp_verify_nonce( $_POST['my_spotify_plugin_custom_field_nonce'], 'my_spotify_plugin_custom_field' )
-	) {
-		return;
-	}
-
 	// 自動保存時には処理を終了する
 	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 		return;
@@ -342,18 +394,17 @@ function my_spotify_plugin_update_custom_field( $post_id ) {
 		update_post_meta( $post_id, 'release_date', esc_html( $track_info->release_date ) );
 	}
 }
-add_action( 'wp_ajax_my_spotify_plugin_save_track_info', 'my_spotify_plugin_update_custom_field' );
-add_action( 'wp_ajax_nopriv_my_spotify_plugin_save_track_info', 'my_spotify_plugin_update_custom_field' );
+add_action( 'save_post', 'my_spotify_plugin_update_custom_field' );
 
 
 // code07
 // POSTリクエストが送信された場合のみ処理を実行する
-if ( ! isset( $_POST['my_spotify_plugin_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_nonce'], 'my_spotify_plugin_update_custom_field' ) ) {
-	return;
+if ( ! isset( $_POST['my_spotify_plugin_custom_field_nonce'] ) || ! wp_verify_nonce( $_POST['my_spotify_plugin_custom_field_nonce'], 'my_spotify_plugin_custom_field' ) ) {
+    return;
 }
 
 // カスタムフィールド「spotify_track_id」の値を取得する
-$spotify_track_id = sanitize_text_field( $_POST['spotify_track_id'] );
+$spotify_track_id = sanitize_text_field( $_POST['my_spotify_plugin_field'] );
 
 // カスタムフィールド「artist_name」の値を取得する
 $artist_name = sanitize_text_field( $_POST['artist_name'] );
@@ -377,42 +428,43 @@ update_post_meta( $post_ID, 'release_date', $release_date );
 add_action( 'save_post', 'my_spotify_plugin_update_custom_field' );
 
 
+
 // code08
 // REST APIエンドポイントを登録する
 function my_spotify_plugin_register_rest_route() {
-    // エンドポイントのURLを定義する
-    $namespace = 'my-spotify-plugin/v1';
-    $route1 = '/station/(?P<id>\d+)/track-info';
-    $route2 = '/save-track-info';
-    $url1 = '/' . $namespace . $route1;
-    $url2 = '/' . $namespace . $route2;
+		// エンドポイントのURLを定義する
+		$namespace = 'my-spotify-plugin/v1';
+		$route1 = '/station/(?P<id>\d+)/track-info';
+		$route2 = '/save-track-info';
+		$url1 = '/' . $namespace . $route1;
+		$url2 = '/' . $namespace . $route2;
 
-    // エンドポイントのコールバック関数を定義する
-    register_rest_route(
-        $namespace,
-        $route1,
-        array(
-            'methods'  => 'POST',
-            'callback' => 'my_spotify_plugin_update_custom_field',
-            'args'     => array(
-                'id' => array(
-                    'validate_callback' => 'is_numeric',
-                ),
-            ),
-        )
-    );
+		// エンドポイントのコールバック関数を定義する
+		register_rest_route(
+				$namespace,
+				$route1,
+				array(
+						'methods'  => 'POST',
+						'callback' => 'my_spotify_plugin_update_custom_field',
+						'args'		 => array(
+								'id' => array(
+										'validate_callback' => 'is_numeric',
+								),
+						),
+				)
+		);
 
-    register_rest_route(
-        $namespace,
-        $route2,
-        array(
-            'methods' => 'POST',
-            'callback' => 'my_spotify_plugin_save_track_info',
-            'permission_callback' => function () {
-                return current_user_can( 'edit_posts' );
-            },
-        )
-    );
+		register_rest_route(
+				$namespace,
+				$route2,
+				array(
+						'methods' => 'POST',
+						'callback' => 'my_spotify_plugin_save_track_info',
+						'permission_callback' => function () {
+								return current_user_can( 'edit_posts' );
+						},
+				)
+		);
 }
 
 add_action( 'rest_api_init', 'my_spotify_plugin_register_rest_route' );
@@ -447,44 +499,44 @@ add_action( 'init', 'my_spotify_plugin_register_post_type' );
 
 // code10
 function my_spotify_plugin_add_meta_box() {
-    add_meta_box(
-        'my_spotify_plugin_track_info',
-        'Spotify Track Info',
-        'my_spotify_plugin_track_info_meta_box',
-        'station',
-        'normal',
-        'high'
-    );
+		add_meta_box(
+				'my_spotify_plugin_track_info',
+				'Spotify Track Info',
+				'my_spotify_plugin_track_info_meta_box',
+				'station',
+				'normal',
+				'high'
+		);
 }
 add_action( 'add_meta_boxes_station', 'my_spotify_plugin_add_meta_box' );
 
 
 // code11
 function my_spotify_plugin_add_custom_fields() {
-    global $post;
-    echo '<input type="hidden" name="my_spotify_plugin_custom_field_nonce" value="' . wp_create_nonce() . '">';
-    echo '<label for="my_spotify_plugin_custom_field">' . __("Spotify Track ID", 'my_spotify_plugin') . '</label><br>';
-    echo '<input type="text" id="my_spotify_plugin_custom_field" name="my_spotify_plugin_custom_field" value="' . get_post_meta($post->ID, 'my_spotify_plugin_custom_field', true) . '">';
+		global $post;
+		echo '<input type="hidden" name="my_spotify_plugin_custom_field_nonce" value="' . wp_create_nonce() . '">';
+		echo '<label for="my_spotify_plugin_custom_field">' . __("Spotify Track ID", 'my_spotify_plugin') . '</label><br>';
+		echo '<input type="text" id="my_spotify_plugin_custom_field" name="my_spotify_plugin_custom_field" value="' . get_post_meta($post->ID, 'my_spotify_plugin_custom_field', true) . '">';
 }
 
 function my_spotify_plugin_save_custom_field( $post_id ) {
-    if ( ! isset( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
-        return;
-    }
-    if ( ! wp_verify_nonce( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_post', $post_id ) ) {
-        return;
-    }
-    if ( ! isset( $_POST['my_spotify_plugin_custom_field'] ) ) {
-        return;
-    }
-    $my_data = sanitize_text_field( $_POST['my_spotify_plugin_custom_field'] );
-    update_post_meta( $post_id, 'my_spotify_plugin_custom_field', $my_data );
+		if ( ! isset( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
+				return;
+		}
+		if ( ! wp_verify_nonce( $_POST['my_spotify_plugin_custom_field_nonce'] ) ) {
+				return;
+		}
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+				return;
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+				return;
+		}
+		if ( ! isset( $_POST['my_spotify_plugin_custom_field'] ) ) {
+				return;
+		}
+		$my_data = sanitize_text_field( $_POST['my_spotify_plugin_custom_field'] );
+		update_post_meta( $post_id, 'my_spotify_plugin_custom_field', $my_data );
 }
 add_action( 'add_meta_boxes', 'my_spotify_plugin_add_meta_box' );
 add_action( 'save_post', 'my_spotify_plugin_save_custom_field' );
